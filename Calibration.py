@@ -23,7 +23,7 @@ print(options_data.iloc[start_index:end_index])
 underlying_price = options_data['underlying_price'].iloc[0]
 options_data['strike'] = options_data['strike'] / underlying_price
 
-features = ['xi0', 'eta', 'rho', 'H', 'strike', 'maturity']
+features = ['a', 'b', 'c', 'eta', 'rho', 'H', 'strike', 'maturity']
 target = 'implied_volatility'
 X = dataset_df[features].values
 y = dataset_df[target].values
@@ -45,16 +45,18 @@ spline = SmoothBivariateSpline(
 target_iv_surface = spline.ev(strike_mesh.ravel(), maturity_mesh.ravel()).reshape(len(maturity_grid), len(strike_grid))
 
 
-def calibration_loss_DE(params, model, target_iv_surface, strike_grid, maturity_grid, X_scaler):
+def calibration_loss(params, model, target_iv_surface, strike_grid, maturity_grid, X_scaler):
 
-    xi0, eta, rho, H = params
+    a, b, c, eta, rho, H = params
     
     K, T = np.meshgrid(strike_grid, maturity_grid)
     K_flat = K.ravel()
     T_flat = T.ravel()
 
     param_sets = np.column_stack([
-        np.full_like(K_flat, xi0),
+        np.full_like(K_flat, a),
+        np.full_like(K_flat, b),
+        np.full_like(K_flat, c),
         np.full_like(K_flat, eta),
         np.full_like(K_flat, rho),
         np.full_like(K_flat, H),
@@ -69,14 +71,16 @@ def calibration_loss_DE(params, model, target_iv_surface, strike_grid, maturity_
     
     return loss
 
-bounds_DE = [(0.01, 0.16),    # xi0
+bounds = [(0.002, 0.1),    # a
+             (0.002, 0.1),    # b
+             (0.002, 0.1),    # c
             (0.5, 4.0),   # eta
             (-0.95, -0.1),   # rho
             (0.025, 0.5)]   # H
 
 result_DE = differential_evolution(
-    calibration_loss_DE,
-    bounds=bounds_DE,
+    calibration_loss,
+    bounds=bounds,
     args=(model, target_iv_surface, strike_grid, maturity_grid, X_scaler),
     strategy='best1bin',
     maxiter=1000,

@@ -2,50 +2,135 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import RobustScaler
 from sklearn.model_selection import train_test_split
-from tensorflow import keras
 from joblib import dump
-import tensorflow as tf
-
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import TensorDataset, DataLoader
+import pandas as pd
 
 dataset_df = pd.read_csv('rbergomi_dataset.csv')
+dataset_df_3 = pd.read_csv('rbergomi_dataset_3.csv')
+
+
+combined_df = pd.concat([dataset_df, dataset_df_3], ignore_index=True)
+
+
+combined_df.to_csv('rbergomi_dataset_final.csv', index=False)
+
+
 
 S0 = 1
-
 strike_range = np.linspace(S0 * 0.8, S0 * 1.2, 30)
 maturity_range = np.linspace(30 / 365.25, 2, 25)
+
+
 features = ['a', 'b', 'c', 'eta', 'rho', 'H', 'strike', 'maturity']
 target = 'implied_volatility'
 
-X = dataset_df[features].values
-y = dataset_df[target].values
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Extract arrays
+X = combined_df[features].values
+y = combined_df[target].values
 
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+# Scale features using RobustScaler
 X_scaler = RobustScaler()
-
 X_train_scaled = X_scaler.fit_transform(X_train)
 X_test_scaled = X_scaler.transform(X_test)
 
+# Save the scaler for future use
 dump(X_scaler, "X_scaler.joblib")
 
-model = keras.models.Sequential([
-    keras.layers.Input(shape=(7,)),  
-    keras.layers.Dense(64, activation='elu'),  
-    keras.layers.Dense(128, activation='elu'),  
-    keras.layers.Dense(64, activation='elu'),
-    keras.layers.Dense(32, activation='elu'),  
-    keras.layers.Dense(1, activation='linear') 
-])
+# --- 2. Convert Data to PyTorch Tensors and Create DataLoaders ---
+# Convert arrays to float32 tensors
+X_train_tensor = torch.tensor(X_train_scaled, dtype=torch.float32)
+y_train_tensor = torch.tensor(y_train, dtype=torch.float32).unsqueeze(1)  # shape: (N,1)
+X_test_tensor = torch.tensor(X_test_scaled, dtype=torch.float32)
+y_test_tensor = torch.tensor(y_test, dtype=torch.float32).unsqueeze(1)
 
-model.compile(optimizer='adam', loss='mae')
-early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+# Create Datasets and DataLoaders
+batch_size = 256
+train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
+test_dataset = TensorDataset(X_test_tensor, y_test_tensor)
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-history = model.fit(
-    X_train_scaled, y_train,  
-    validation_data=(X_test_scaled, y_test),  
-    epochs=100,  
-    batch_size=256,  
-    callbacks=[early_stopping], 
-    verbose=1 
-)
+# --- 3. Define the Neural Network Model ---
+class RoughBergomiNet(nn.Module):
+    def __init__(self):
+        super(RoughBergomiNet, self).__init__()
+        self.model = nn.Sequential(
+            nn.Linear(8, 64),
+            nn.ELU(),
+            nn.Linear(64, 128),
+            nn.ELU(),
+            nn.Linear(128, 64),
+            nn.ELU(),
+            nn.Linear(64, 32),
+            nn.ELU(),
+            nn.Linear(32, 1)  # Linear output layer
+        )
+    
+    def forward(self, x):
+        return self.model(x)
 
-model.save("rbergomi_model.keras")
+model = RoughBergomiNet()
+
+# --- 4. Set Up Optimizer and Loss Function ---
+optimizer = optim.Adam(model.parameters(), lr=1e-3)
+criterion = nn.L1Loss()  # Mean Absolute Error
+
+# --- 5. Training Loop with Early Stopping ---
+num_epochs = 100
+patience = 10
+best_val_loss = float('inf')
+patience_counter = 0
+best_model_state = None
+
+for epoch in range(num_epochs):
+    # Training phase
+    model.train()
+    train_losses = []
+    for batch_X, batch_y in train_loader:
+        optimizer.zero_grad()
+        predictions = model(batch_X)
+        loss = criterion(predictions, batch_y)
+        loss.backward()
+        optimizer.step()
+        train_losses.append(loss.item())
+    
+    # Validation phase
+    model.eval()
+    val_losses = []
+    with torch.no_grad():
+        for batch_X, batch_y in test_loader:
+            predictions = model(batch_X)
+            loss = criterion(predictions, batch_y)
+            val_losses.append(loss.item())
+    
+    avg_train_loss = np.mean(train_losses)
+    avg_val_loss = np.mean(val_losses)
+    
+    print(f"Epoch {epoch+1}/{num_epochs} | Train Loss: {avg_train_loss:.4f} | Val Loss: {avg_val_loss:.4f}")
+    
+   
+    if avg_val_loss < best_val_loss:
+        best_val_loss = avg_val_loss
+        best_model_state = model.state_dict() 
+        patience_counter = 0
+    else:
+        patience_counter += 1
+        if patience_counter >= patience:
+            print("Early stopping triggered!")
+            model.load_state_dict(best_model_state)
+            break
+
+
+if best_model_state is not None:
+    model.load_state_dict(best_model_state)
+
+torch.save(model.state_dict(), "rbergomi_model.pth")

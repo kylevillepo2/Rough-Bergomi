@@ -48,7 +48,8 @@ def variance(xi0, eta, riemann_liouville, T, H):
     
     time_grid = np.linspace(0,T,n)
     riemann_slice = riemann_liouville[:, :n]
-    xi = xi0 * np.exp(eta * riemann_slice - 0.5 * (eta ** 2) * time_grid**(2*H))
+    
+    xi = (xi0[0] + xi0[1] * time_grid + xi0[2] * time_grid ** 2) * np.exp(eta * riemann_slice - 0.5 * (eta ** 2) * time_grid**(2*H))
     return xi
 
 
@@ -120,7 +121,7 @@ def implied_volatility(target_price, S0, K, r, T, tol=1e-8, max_iterations=100):
 S0 = 100       # Initial stock price
 r = 0.02       # Risk-free rate
 T = 1          # Time horizon (1 year)
-xi0 = 0.04     # Initial variance
+xi0 = [0.02, 0.03, 0.01]     # Initial variance
 eta = 1.5     # Volatility of volatility
 rho = -0.7     # Correlation between stock and variance
 H = 0.3     # Hurst exponent (for rough volatility)

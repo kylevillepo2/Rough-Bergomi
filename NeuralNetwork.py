@@ -13,7 +13,7 @@ S0 = 1
 
 strike_range = np.linspace(S0 * 0.8, S0 * 1.2, 30)
 maturity_range = np.linspace(30 / 365.25, 2, 25)
-features = ['xi0', 'eta', 'rho', 'H', 'strike', 'maturity']
+features = ['a', 'b', 'c', 'eta', 'rho', 'H', 'strike', 'maturity']
 target = 'implied_volatility'
 
 X = dataset_df[features].values

@@ -17,14 +17,14 @@ m=100000
 r = 0.0427
 S0 = 1
 
-num_samples = 1000
-xi0_samples = np.random.uniform(0.01, 0.16, num_samples)
-eta_samples = np.random.uniform(0.5, 4.0, num_samples)
-rho_samples = np.random.uniform(-0.95, -0.1, num_samples)
-H_samples = np.random.uniform(0.025, 0.5, num_samples)
+num_samples = 500
+xi0_samples = np.random.uniform(0.01, 0.16, num_samples).astype(np.float32)
+eta_samples = np.random.uniform(0.5, 4.0, num_samples).astype(np.float32)
+rho_samples = np.random.uniform(-0.95, -0.1, num_samples).astype(np.float32)
+H_samples = np.random.uniform(0.025, 0.5, num_samples).astype(np.float32)
 
-strike_range = np.linspace(S0 * 0.8, S0 * 1.2, 30)
-maturity_range = np.linspace(30 / 365.25, 2, 25)
+strike_range = np.linspace(S0 * 0.8, S0 * 1.2, 30).astype(np.float32)
+maturity_range = np.linspace(30 / 365.25, 2, 25).astype(np.float32)
 
 
 
@@ -53,7 +53,7 @@ def compute_option_and_iv(idx):
             prices_cropped = prices[:,min(int(n*(T/2)),n-1)]
             price = compute_option_price(prices_cropped, T, K)
             iv = implied_volatility(price, S0, K, r, T)
-            if iv > 0 and iv < 3.0:
+            if iv > 0.001 and iv < 3.0:
                 data_points.append({
                     'xi0': xi0,
                     'eta': eta,
@@ -65,10 +65,11 @@ def compute_option_and_iv(idx):
                 })
     return data_points 
 
-results = Parallel(n_jobs=1)(delayed(compute_option_and_iv)(i) for i in tqdm(range(num_samples), desc="Computing Volatility Grids"))
+results = Parallel(n_jobs=4)(delayed(compute_option_and_iv)(i) for i in tqdm(range(num_samples), desc="Computing Volatility Grids"))
 
 dataset = [point for sublist in results for point in sublist]
 
 dataset_df = pd.DataFrame(dataset)
 dataset_df = dataset_df.sample(frac=1).reset_index(drop=True)
+
 dataset_df.to_csv('rbergomi_dataset.csv', index=False)

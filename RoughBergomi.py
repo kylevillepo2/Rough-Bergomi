@@ -44,13 +44,12 @@ def riemann_liouville(T, n, H, m):
     return X
 
 
-def variance(xi0, eta, riemann_liouville):
-
-    mean_sq = np.mean(np.abs(riemann_liouville) ** 2, axis=1)  
-
+def variance(xi0, eta, riemann_liouville, T, H):
+    
+    time_grid = np.linspace(0,T,n)
     riemann_slice = riemann_liouville[:, :n]
-    vega = xi0 * np.exp(eta * riemann_slice - 0.5 * (eta ** 2) * mean_sq[:, None])
-    return vega
+    xi = xi0 * np.exp(eta * riemann_slice - 0.5 * (eta ** 2) * time_grid**(2*H))
+    return xi
 
 
 def dz(dw1, rho, n, m):
@@ -62,12 +61,12 @@ def dz(dw1, rho, n, m):
 
 def mc_sim(S0, n, m, r, T, xi0, eta, rho, H, whole_process=False):
     riemann_liouville_x = riemann_liouville(T, n, H, m) 
-    vega = variance(xi0, eta, riemann_liouville_x) 
+    xi = variance(xi0, eta, riemann_liouville_x, T, H) 
     dz1 = dz(dw1, rho, n, m) 
     
     dt = T / n
 
-    increments = (r - 0.5 * vega**2) * dt + vega * np.sqrt(dt) * dz1
+    increments = (r - 0.5 * xi) * dt + np.sqrt(xi) * np.sqrt(dt) * dz1
 
     if whole_process:
 

@@ -1,29 +1,19 @@
 import numpy as np
-from scipy.optimize import brentq, minimize
-import matplotlib.pyplot as plt
 import pandas as pd
-from sklearn.preprocessing import StandardScaler, RobustScaler
+from sklearn.preprocessing import RobustScaler
 from sklearn.model_selection import train_test_split
 from tensorflow import keras
-from mpl_toolkits.mplot3d import Axes3D
-from scipy.interpolate import SmoothBivariateSpline
-from RoughBergomi import mc_sim, implied_volatility
-from sklearn.metrics import mean_squared_error
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
-from joblib import dump, load
-
-import random
+from joblib import dump
 import tensorflow as tf
 
 
-dataset_df = pd.read_csv('heston_dataset.csv')
+dataset_df = pd.read_csv('rbergomi_dataset.csv')
 
 S0 = 1
 
 strike_range = np.linspace(S0 * 0.8, S0 * 1.2, 30)
 maturity_range = np.linspace(30 / 365.25, 2, 25)
-features = ['kappa', 'theta', 'sigma', 'rho', 'v0', 'strike', 'maturity']
+features = ['xi0', 'eta', 'rho', 'H', 'strike', 'maturity']
 target = 'implied_volatility'
 
 X = dataset_df[features].values
@@ -58,4 +48,4 @@ history = model.fit(
     verbose=1 
 )
 
-model.save("heston_model.keras")
+model.save("rbergomi_model.keras")

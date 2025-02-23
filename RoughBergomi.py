@@ -13,7 +13,7 @@ from math import log, sqrt, exp
 from numba import jit
 n=1000
 m=100000
-dw1 = np.random.randn(m, n)
+dw1 = np.random.randn(m, n).astype(np.float32)
 
 
 def G(x, H):
@@ -24,12 +24,12 @@ def riemann_liouville(T, n, H, m):
 
     
     dt = T / n
-    gamma = np.zeros((n, n))
+    gamma = np.zeros((n, n), dtype=np.float32)
 
     G_vec = np.vectorize(G)
 
-    j = np.arange(1, n+1)   
-    i = np.arange(1, n+1)  
+    j = np.arange(1, n+1, dtype=np.float32)   
+    i = np.arange(1, n+1, dtype=np.float32)  
     J, I = np.meshgrid(j, i, indexing='ij')
 
     ratio = np.where(J <= I, J / I, I / J)
@@ -54,7 +54,7 @@ def variance(xi0, eta, riemann_liouville, T, H):
 
 def dz(dw1, rho, n, m):
 
-    dw2 = np.random.randn(m, n)
+    dw2 = np.random.randn(m, n).astype(np.float32)
     return rho * dw1 + np.sqrt(1 - rho ** 2) * dw2
 
 
@@ -66,7 +66,7 @@ def mc_sim(S0, n, m, r, T, xi0, eta, rho, H, whole_process=False):
     
     dt = T / n
 
-    increments = (r - 0.5 * xi) * dt + np.sqrt(xi) * np.sqrt(dt) * dz1
+    increments = ((r - 0.5 * xi) * dt + np.sqrt(xi) * np.sqrt(dt) * dz1).astype(np.float32)
 
     if whole_process:
 

@@ -46,7 +46,7 @@ def compute_option_and_iv(idx):
     data_points = []
 
     max_maturity = np.max(maturity_range)
-    prices = mc_sim(S0, n, m, r, max_maturity, xi0, eta, rho, H, whole_process=True)
+    prices = (mc_sim(S0, n, m, r, max_maturity, xi0, eta, rho, H, whole_process=True)).astype(np.float32)
     
     for T in maturity_range:
         for K in strike_range:
@@ -65,7 +65,7 @@ def compute_option_and_iv(idx):
                 })
     return data_points 
 
-results = Parallel(n_jobs=4)(delayed(compute_option_and_iv)(i) for i in tqdm(range(num_samples), desc="Computing Volatility Grids"))
+results = Parallel(n_jobs=2)(delayed(compute_option_and_iv)(i) for i in tqdm(range(num_samples), desc="Computing Volatility Grids"))
 
 dataset = [point for sublist in results for point in sublist]
 

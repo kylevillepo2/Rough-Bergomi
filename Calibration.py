@@ -32,7 +32,7 @@ class RoughBergomiNet(nn.Module):
 
 model = RoughBergomiNet()
 model.load_state_dict(torch.load("rbergomi_model.pth", map_location=torch.device("cpu")))
-model.eval()  # Set the model to evaluation mode
+model.eval() 
 
 X_scaler = load("X_scaler.joblib")
 
@@ -126,11 +126,6 @@ else:
 
 
 
-
-import numpy as np
-import torch
-import matplotlib.pyplot as plt
-
 def generate_nn_iv_surface(model, params, strike_grid, maturity_grid, X_scaler):
     """
     Generate the implied volatility surface from the trained NN model given calibrated parameters.
@@ -143,7 +138,7 @@ def generate_nn_iv_surface(model, params, strike_grid, maturity_grid, X_scaler):
     K_flat = K.ravel()
     T_flat = T.ravel()
     
-    # Construct the full set of input parameters for each grid point
+
     param_sets = np.column_stack([
         np.full_like(K_flat, a),
         np.full_like(K_flat, b),
@@ -155,17 +150,14 @@ def generate_nn_iv_surface(model, params, strike_grid, maturity_grid, X_scaler):
         T_flat
     ])
     
-    # Scale the parameters with the previously-fitted scaler
     param_scaled = X_scaler.transform(param_sets)
     
-    # Convert the scaled parameters to a PyTorch tensor
+
     param_tensor = torch.tensor(param_scaled, dtype=torch.float32)
     
-    # Forward pass: compute model predictions with no gradient
     with torch.no_grad():
         pred_iv = model(param_tensor).squeeze()
     
-    # Reshape predictions back to the (maturity, strike) grid shape
     iv_surface = pred_iv.view(*K.shape).numpy()
     return iv_surface
 
@@ -188,10 +180,8 @@ if result_DE.success:
         X_scaler=X_scaler
     )
 
-    # 3. Compute residuals
     residuals = nn_iv_surface - target_iv_surface
 
-    # 4. Plot the surfaces side by side and the residuals
 
 else:
     print("\nOptimization failed:", result_DE.message)
@@ -203,7 +193,6 @@ import matplotlib.pyplot as plt
 
 fig = plt.figure(figsize=(18, 6))
 
-# --- (a) Market IV Surface (3D) ---
 ax1 = fig.add_subplot(1, 3, 1, projection='3d')
 surf_market = ax1.plot_surface(
     strike_mesh,
@@ -217,7 +206,6 @@ ax1.set_xlabel("Strike")
 ax1.set_ylabel("Maturity")
 ax1.set_zlabel("Implied Volatility")
 
-# --- (b) NN Calibrated IV Surface (3D) ---
 ax2 = fig.add_subplot(1, 3, 2, projection='3d')
 surf_nn = ax2.plot_surface(
     strike_mesh,

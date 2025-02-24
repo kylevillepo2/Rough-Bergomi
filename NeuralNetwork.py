@@ -9,14 +9,9 @@ import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 import pandas as pd
 
-dataset_df = pd.read_csv('rbergomi_dataset.csv')
-dataset_df_3 = pd.read_csv('rbergomi_dataset_3.csv')
 
 
-combined_df = pd.concat([dataset_df, dataset_df_3], ignore_index=True)
-
-
-combined_df.to_csv('rbergomi_dataset_final.csv', index=False)
+combined_df = pd.read_csv('rbergomi_dataset_final.csv')
 
 
 

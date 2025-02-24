@@ -28,7 +28,6 @@ maturity_range = np.linspace(30 / 365.25, 2, 25)
 features = ['a', 'b', 'c', 'eta', 'rho', 'H', 'strike', 'maturity']
 target = 'implied_volatility'
 
-# Extract arrays
 X = combined_df[features].values
 y = combined_df[target].values
 
@@ -37,29 +36,27 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
 )
 
-# Scale features using RobustScaler
+
 X_scaler = RobustScaler()
 X_train_scaled = X_scaler.fit_transform(X_train)
 X_test_scaled = X_scaler.transform(X_test)
 
-# Save the scaler for future use
+
 dump(X_scaler, "X_scaler.joblib")
 
-# --- 2. Convert Data to PyTorch Tensors and Create DataLoaders ---
-# Convert arrays to float32 tensors
+
 X_train_tensor = torch.tensor(X_train_scaled, dtype=torch.float32)
-y_train_tensor = torch.tensor(y_train, dtype=torch.float32).unsqueeze(1)  # shape: (N,1)
+y_train_tensor = torch.tensor(y_train, dtype=torch.float32).unsqueeze(1)  
 X_test_tensor = torch.tensor(X_test_scaled, dtype=torch.float32)
 y_test_tensor = torch.tensor(y_test, dtype=torch.float32).unsqueeze(1)
 
-# Create Datasets and DataLoaders
+
 batch_size = 256
 train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
 test_dataset = TensorDataset(X_test_tensor, y_test_tensor)
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-# --- 3. Define the Neural Network Model ---
 class RoughBergomiNet(nn.Module):
     def __init__(self):
         super(RoughBergomiNet, self).__init__()
@@ -72,7 +69,7 @@ class RoughBergomiNet(nn.Module):
             nn.ELU(),
             nn.Linear(64, 32),
             nn.ELU(),
-            nn.Linear(32, 1)  # Linear output layer
+            nn.Linear(32, 1)  
         )
     
     def forward(self, x):
@@ -80,11 +77,9 @@ class RoughBergomiNet(nn.Module):
 
 model = RoughBergomiNet()
 
-# --- 4. Set Up Optimizer and Loss Function ---
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
-criterion = nn.L1Loss()  # Mean Absolute Error
+criterion = nn.L1Loss()  
 
-# --- 5. Training Loop with Early Stopping ---
 num_epochs = 100
 patience = 10
 best_val_loss = float('inf')
@@ -92,7 +87,7 @@ patience_counter = 0
 best_model_state = None
 
 for epoch in range(num_epochs):
-    # Training phase
+
     model.train()
     train_losses = []
     for batch_X, batch_y in train_loader:
@@ -103,7 +98,7 @@ for epoch in range(num_epochs):
         optimizer.step()
         train_losses.append(loss.item())
     
-    # Validation phase
+
     model.eval()
     val_losses = []
     with torch.no_grad():

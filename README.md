@@ -1,1 +1,3 @@
-# Rough Bergomi Project
+# Rough Bergomi Neural Network Calibration
+
+
